@@ -1,8 +1,6 @@
 import pygame
-import random
+from tetrominoes import *
 
-#piece, rotation
-names = ["Z","O","S","I","T","L","J"]
 board = [["","","","","","","","","",""],
          ["","","","","","","","","",""],
          ["","","","","","","","","",""],
@@ -28,25 +26,41 @@ board = [["","","","","","","","","",""],
          ["","","","","","","","","",""],
          ["","","","","","","","","",""]]
 
-for row in board:
-  print(row)
+# for row in board:
+#   print(row)
 
-def setup():
-    pygame.init()
+# screen
+pygame.init()
 
-    SCRN_W, SCRN_H = 390, 660
-    screen = pygame.display.set_mode((SCRN_W, SCRN_H))
+def draw_grid():
+    screen.fill(WHITE)
+    # grid
+    pygame.draw.rect(screen, BLACK, [30, 30, 300, 600])
 
-    BG_COLOR = (255, 255, 255)
-  
-    screen.fill(BG_COLOR)
-    pygame.display.flip()
+    for i in range(9): # vertical lines
+        offset = i * 30
+        pygame.draw.line(screen, GREY, (60+offset, 30), (60+offset, 630))
 
-    pygame.display.set_caption('Work in progress')
+    for i in range(19):
+        offset = i * 30
+        pygame.draw.line(screen, GREY, (30, 60+offset), (330, 60+offset))
+
+
+SCRN_W, SCRN_H = 390, 660
+screen = pygame.display.set_mode((SCRN_W, SCRN_H))
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREY = (128, 128, 128)
+
+draw_grid()
+
+pygame.display.flip()
+
+pygame.display.set_caption('Pygame Tetris')
+
 
 def main():
-    setup()
-
     running = True
     while running: # main game loop
         for event in pygame.event.get():
@@ -55,5 +69,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-
-# pygame.draw.rect(screen, (0, 128, 255), [x_coord, y_coord, 30, 30], border_radius=10)
