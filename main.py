@@ -1,5 +1,6 @@
 import pygame
-from tetrominoes import *
+import tetrominoes
+from draw_screen import draw_grid, draw
 
 board = [[""]*10 for _ in range(24)]
 
@@ -7,118 +8,20 @@ board = [[""]*10 for _ in range(24)]
 pygame.init()
 
 SCRN_W, SCRN_H = 420, 690
-screen = pygame.display.set_mode((SCRN_W, SCRN_H))
-
-pygame.display.set_caption('Pygame Tetris')
-
-clock = pygame.time.Clock()
-
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREY = (128, 128, 128)
+
+screen = pygame.display.set_mode((SCRN_W, SCRN_H))
+pygame.display.set_caption('Pygame Tetris')
+
+clock = pygame.time.Clock()
 
 screen.fill(WHITE)
 
 pygame.display.flip()
 
 q = []
-
-def draw_grid(hold):
-    font = pygame.font.Font('freesansbold.ttf', 15)
-    screen.fill(GREY)
-    
-    # grid
-    pygame.draw.rect(screen, BLACK, [60, 30, 300, 600])
-
-    for i in range(11): # vertical lines
-        offset = i * 30
-        pygame.draw.line(screen, GREY, (60+offset, 30), (60+offset, 630))
-
-    for i in range(21): # horizontal lines
-        offset = i * 30
-        pygame.draw.line(screen, GREY, (60, 30+offset), (390, 30+offset))
-
-    # draw placed pieces
-    y = 30
-    for row in board[4:]:
-        x = 60
-        for spot in row:
-            if spot != '':
-                pygame.draw.rect(screen, piece_colors[spot], [x+1, y+1, 29, 29])
-            x += 30
-
-        y += 30
-
-    # next up text
-    next_text = font.render("NEXT:", True, (0, 0, 0))
-    tRect = next_text.get_rect()
-    tRect.center = (390, 30)
-    screen.blit(next_text, tRect)
-    
-    # show next pieces
-    pygame.draw.rect(screen, BLACK, [370, 45, 40, 175])
-    next_piece_y = 50
-    for shape in q[1:6]:
-        first_piece = pygame.image.load("Tetromino Images/" + shape + ".png")
-        screen.blit(first_piece, [378, next_piece_y])
-        next_piece_y += 35
-
-    # hold text
-    hold_text = font.render("HOLD:", True, (0, 0, 0))
-    tRect = hold_text.get_rect()
-    tRect.center = (31, 30)
-    screen.blit(hold_text, tRect)
-    
-    # show held piece
-    pygame.draw.rect(screen, BLACK, [10, 45, 40, 30])
-    if hold != "":
-        held = pygame.image.load("Tetromino Images/" + hold + ".png")
-        screen.blit(held, [18, 48])
-
-    pygame.display.flip()
-
-def draw(tetromino: str, x=120, y=30, rotation=0):
-    piece = eval(tetromino)
-    color = piece_colors[tetromino]
-
-    x_spawn = x # initial line where each box is drawn relative to
-    outline_coords = [] # used for coords for outline of where piece will land
-
-    for row in piece[rotation]:
-        for c in row: # goes through list to draw shape one box at a time
-            if c == 'X':
-                pygame.draw.rect(screen, color, [x+1, y+1, 29, 29]) # boxes of tetromino
-                outline_coords.append([(x-60)//30, (y-30)//30+4]) # adds coords of each box
-            
-            x += 30
-
-        # resets drawing "cursor" on next row
-        x = x_spawn 
-        y += 30
-
-    # outline
-    can_go_down = True
-    while can_go_down: # moves outline coords down as much as possible
-        for coord in outline_coords: # checks if can move down 1
-            if coord[1]+1 > 23: # bottom of board
-                can_go_down = False
-                break
-                
-            elif board[coord[1]+1][coord[0]] != "": # another piece
-                can_go_down = False
-                break
-
-        if can_go_down: # moves down one if can move down
-            for coord in outline_coords:
-                coord[1] += 1
-
-    for coord in outline_coords: # draws outline
-        outline_x = coord[0] * 30 + 60
-        outline_y = (coord[1]-3) * 30
-
-        pygame.draw.rect(screen, color, [outline_x+1, outline_y+1, 29, 29], 1)
-    
-    pygame.display.flip()
 
 class current_piece:
     def __init__(self, shape: str, x=150, y=30, rotation=0):
@@ -130,7 +33,8 @@ class current_piece:
 
     # updates grid coords of each box in the tetromino
     def get_coords(self):
-        piece = eval(self.shape)
+        piece_states = "tetrominoes." + self.shape
+        piece = eval(piece_states)
 
         temp_x = self.x
         temp_y = self.y
@@ -180,31 +84,36 @@ class current_piece:
         for coord in self.coords:
             board[coord[1]][coord[0]] = self.shape
 
+            pygame.draw.rect(screen, WHITE, [coord[0]*30+60, (coord[1]-4)*30+30, 29, 29])
+
+        pygame.display.flip()
+        pygame.time.delay(2)
+
     # rotation system (wall kicks)
     def SRS(self, direction):
         wall_kick_tests = [[[(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)], # 0 to 1 (r)
                             [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)]], # 0 to 3 (l)
                             
                             [[(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)], # 1 to 2
-                            [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)]], # 1 to 0
+                             [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)]], # 1 to 0
                             
                             [[(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)], # 2 to 3
-                            [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1,2)]], # 2 to 1
+                             [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1,2)]], # 2 to 1
                             
                             [[(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)], # 3 to 0
-                            [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)]]] # 3 to 2
+                             [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)]]] # 3 to 2
 
         I_wall_kick_tests = [[[(0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2)], # 0 to 1 (r)
-                            [(0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1)]], # 0 to 3 (l)
+                              [(0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1)]], # 0 to 3 (l)
                             
                             [[(0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1)], # 1 to 2
-                            [(0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2)]], # 1 to 0
+                             [(0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2)]], # 1 to 0
                             
                             [[(0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2)], # 2 to 3
-                            [(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)]], # 2 to 1
+                             [(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)]], # 2 to 1
                             
                             [[(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)], # 3 to 0
-                            [(0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2)]]] # 3 to 2
+                             [(0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2)]]] # 3 to 2
 
         def test(start_rotation, shape_name):
             self.get_coords() # get orientation for placement
@@ -256,7 +165,8 @@ class current_piece:
             start_rotation = self.rotation
             self.rotation -= 1 if self.rotation >= 1 else -3
             test(start_rotation, self.shape)
-  
+
+
 # clears full lines in board
 def clear_lines():
     for i, line in enumerate(board):
@@ -264,23 +174,43 @@ def clear_lines():
             board.pop(i)
             board.insert(0, [""]*10)
 
+            pygame.draw.rect(screen, WHITE, [60, 30+30*(i-4), 300, 30]) # white flash
+
+    pygame.display.flip()
+    pygame.time.delay(100)
+
+
+# returns if piece can't be spawned after moving up twice
+def check_lose(current):
+    if not current.move_check(0,0): # moves up one if can't place
+        current.y -= 30
+    
+        if not current.move_check(0,0): # moves up again if can't place
+            current.y -= 30
+      
+            if not current.move_check(0,0): # lose if can't spawn after moving up twice
+                return True
+    
+    return False
+
+
 # main game function
 def main():
-    # draw_grid(hold)
-    q.extend(generate_bag())
+    q.extend(tetrominoes.generate_bag())
     current = current_piece(q[0])
-    draw(current.shape, current.x, current.y, current.rotation)
+    draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
     pygame.key.set_repeat(200, 30)
 
     hold = ""
-    used_hold_flag = False
+    used_hold = False # tracks if used hold
+    space_held = False # prevents holding space
 
     frame = 0
     running = True
     while running: # main game loop
         if len(q) <= 7:
-          q.extend(generate_bag())
+          q.extend(tetrominoes.generate_bag())
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -290,85 +220,111 @@ def main():
                 # move right
                 if event.key == pygame.K_RIGHT:
                     if current.move_check(1, 0):
-                        draw_grid(hold)
+                        draw_grid(screen, board, hold, q)
                         current.x += 30
-                        draw(current.shape, current.x, current.y, current.rotation)
+                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # soft drop
                 if event.key == pygame.K_DOWN:
                     if current.move_check(0, 1):
-                        draw_grid(hold)
+                        draw_grid(screen, board, hold, q)
                         current.y += 30
-                        draw(current.shape, current.x, current.y, current.rotation)
+                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # move left
                 if event.key == pygame.K_LEFT:
                     if current.move_check(-1, 0):
-                        draw_grid(hold)
+                        draw_grid(screen, board, hold, q)
                         current.x -= 30
-                        draw(current.shape, current.x, current.y, current.rotation)
+                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # rotate right
                 if event.key == pygame.K_UP:
                     current.SRS(0)
-                    draw_grid(hold)
-                    draw(current.shape, current.x, current.y, current.rotation)
+                    draw_grid(screen, board, hold, q)
+                    draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # hard drop
-                if event.key == pygame.K_SPACE:
-                    used_hold_flag = False
-                    while current.move_check(0, 1):
-                        current.y += 30
+                if not space_held: # prevent holding space 
+                    if event.key == pygame.K_SPACE:
+                        used_hold = False
+                        space_held = True
 
-                    current.place()
-                    q.pop(0)
-                    current = current_piece(q[0], 150, 30)
-                    
-                    clear_lines()
-                    draw_grid(hold)
-                    draw(current.shape, current.x, current.y, current.rotation)
+                        while current.move_check(0, 1):
+                            current.y += 30
+
+                        current.place()
+                        q.pop(0)
+                        current = current_piece(q[0], 150, 30)
+                        if check_lose(current): # check if lost
+                            running = False
+                        
+                        clear_lines()
+                        draw_grid(screen, board, hold, q)
+                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # rotate left
                 if event.key == pygame.K_z:
                     current.SRS(-1)
-                    draw_grid(hold)
-                    draw(current.shape, current.x, current.y, current.rotation)
+                    draw_grid(screen, board, hold, q)
+                    draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # hold
                 if event.key == pygame.K_c:
-                    if not used_hold_flag:
-                        used_hold_flag = True
+                    if not used_hold:
+                        used_hold = True
                         if hold == "":
                             hold = q.pop(0)
                         else:
                             q.insert(0, hold)
                             hold = q.pop(1)
                         
-                        draw_grid(hold)
+                        draw_grid(screen, board, hold, q)
                         current = current_piece(q[0], 150, 30)
-                        draw(current.shape, current.x, current.y, current.rotation)
+                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_SPACE:
+                    space_held = False # allows space to be pressed again after release
 
         # gravity
         if frame % 30 == 0:
             if current.move_check(0, 1): 
-                draw_grid(hold)
+                draw_grid(screen, board, hold, q)
                 current.y += 30
-                draw(current.shape, current.x, current.y, current.rotation)
+                draw(screen, board, current.shape, current.x, current.y, current.rotation)
                 ground_time = 0
                 
-            elif ground_time == 3: # place from gravity
-                used_hold_flag = False
+            elif ground_time == 2: # place from gravity
+                used_hold = False
+
                 current.place()
                 q.pop(0)
                 current = current_piece(q[0], 150, 30)
                 ground_time = 0
+                if check_lose(current): # check if lost
+                    running = False
                 
                 clear_lines()
-                draw_grid(hold)
-                draw(current.shape, current.x, current.y, current.rotation)
+                draw_grid(screen, board, hold, q)
+                draw(screen, board, current.shape, current.x, current.y, current.rotation)
                 
             else: # delay before placing from gravity
                 ground_time += 1
+
+                # flash
+                for coord in current.coords:
+                    pygame.draw.rect(screen, WHITE, [coord[0]*30+61, (coord[1]-4)*30+31, 29, 29])
+                
+                pygame.display.flip()
+                pygame.time.delay(15)
+
+                for coord in current.coords:
+                    pygame.draw.rect(screen, tetrominoes.piece_colors[current.shape], [coord[0]*30+61, (coord[1]-4)*30+31, 29, 29])
+
+                pygame.display.flip()
+                pygame.time.delay(15)
+
 
         # update frame var
         frame += 1 
