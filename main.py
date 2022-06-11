@@ -1,6 +1,7 @@
 import pygame
 import tetrominoes
-from draw_screen import draw_grid, draw
+from render import draw_grid, draw
+from leveling import level_up, speed
 
 board = [[""]*10 for _ in range(24)]
 
@@ -14,6 +15,8 @@ GREY = (128, 128, 128)
 
 screen = pygame.display.set_mode((SCRN_W, SCRN_H))
 pygame.display.set_caption('Pygame Tetris')
+icon = pygame.image.load("icon.png")
+pygame.display.set_icon(icon)
 
 clock = pygame.time.Clock()
 
@@ -169,15 +172,20 @@ class current_piece:
 
 # clears full lines in board
 def clear_lines():
+    line_count = 0
+
     for i, line in enumerate(board):
         if not "" in line:
             board.pop(i)
+            line_count += 1
             board.insert(0, [""]*10)
 
             pygame.draw.rect(screen, WHITE, [60, 30+30*(i-4), 300, 30]) # white flash
 
     pygame.display.flip()
     pygame.time.delay(100)
+
+    return line_count
 
 
 # returns if piece can't be spawned after moving up twice
@@ -206,6 +214,9 @@ def main():
     used_hold = False # tracks if used hold
     space_held = False # prevents holding space
 
+    level = 0
+    lines_cleared = 0
+
     frame = 0
     running = True
     while running: # main game loop
@@ -220,28 +231,28 @@ def main():
                 # move right
                 if event.key == pygame.K_RIGHT:
                     if current.move_check(1, 0):
-                        draw_grid(screen, board, hold, q)
+                        draw_grid(screen, board, hold, q, level, lines_cleared)
                         current.x += 30
                         draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # soft drop
                 if event.key == pygame.K_DOWN:
                     if current.move_check(0, 1):
-                        draw_grid(screen, board, hold, q)
+                        draw_grid(screen, board, hold, q, level, lines_cleared)
                         current.y += 30
                         draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # move left
                 if event.key == pygame.K_LEFT:
                     if current.move_check(-1, 0):
-                        draw_grid(screen, board, hold, q)
+                        draw_grid(screen, board, hold, q, level, lines_cleared)
                         current.x -= 30
                         draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # rotate right
                 if event.key == pygame.K_UP:
                     current.SRS(0)
-                    draw_grid(screen, board, hold, q)
+                    draw_grid(screen, board, hold, q, level, lines_cleared)
                     draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # hard drop
@@ -259,14 +270,16 @@ def main():
                         if check_lose(current): # check if lost
                             running = False
                         
-                        clear_lines()
-                        draw_grid(screen, board, hold, q)
+                        lines_cleared += clear_lines()
+                        level = level_up(level, lines_cleared)
+
+                        draw_grid(screen, board, hold, q, level, lines_cleared)
                         draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # rotate left
                 if event.key == pygame.K_z:
                     current.SRS(-1)
-                    draw_grid(screen, board, hold, q)
+                    draw_grid(screen, board, hold, q, level, lines_cleared)
                     draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
                 # hold
@@ -279,23 +292,24 @@ def main():
                             q.insert(0, hold)
                             hold = q.pop(1)
                         
-                        draw_grid(screen, board, hold, q)
+                        draw_grid(screen, board, hold, q, level, lines_cleared)
                         current = current_piece(q[0], 150, 30)
                         draw(screen, board, current.shape, current.x, current.y, current.rotation)
 
+            # detect releasing space
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_SPACE:
                     space_held = False # allows space to be pressed again after release
 
         # gravity
-        if frame % 30 == 0:
+        if frame % speed(level) == 0:
             if current.move_check(0, 1): 
-                draw_grid(screen, board, hold, q)
+                draw_grid(screen, board, hold, q, level, lines_cleared)
                 current.y += 30
                 draw(screen, board, current.shape, current.x, current.y, current.rotation)
                 ground_time = 0
                 
-            elif ground_time == 2: # place from gravity
+            elif ground_time == 49-speed(level): # place from gravity
                 used_hold = False
 
                 current.place()
@@ -305,8 +319,9 @@ def main():
                 if check_lose(current): # check if lost
                     running = False
                 
-                clear_lines()
-                draw_grid(screen, board, hold, q)
+                lines_cleared += clear_lines()
+                level = level_up(level, lines_cleared)
+                draw_grid(screen, board, hold, q, level, lines_cleared)
                 draw(screen, board, current.shape, current.x, current.y, current.rotation)
                 
             else: # delay before placing from gravity

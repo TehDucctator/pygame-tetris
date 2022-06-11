@@ -7,7 +7,7 @@ pygame.font.init()
 BLACK = (0, 0, 0)
 GREY = (128, 128, 128)
 
-def draw_grid(screen, board, hold, q):
+def draw_grid(screen, board, hold, q, level, lines):
     font = pygame.font.Font('freesansbold.ttf', 15)
     screen.fill(GREY)
     
@@ -33,8 +33,20 @@ def draw_grid(screen, board, hold, q):
 
         y += 30
 
+    # level text
+    level_text = font.render(f"LEVEL: {level}", True, BLACK)
+    tRect = level_text.get_rect()
+    tRect.center = (150, 660)
+    screen.blit(level_text, tRect)
+
+    # lines cleared text
+    line_text = font.render(F"LINES: {lines}", True, BLACK)
+    tRect = line_text.get_rect()
+    tRect.center = (270, 660)
+    screen.blit(line_text, tRect)
+
     # next up text
-    next_text = font.render("NEXT:", True, (0, 0, 0))
+    next_text = font.render("NEXT:", True, BLACK)
     tRect = next_text.get_rect()
     tRect.center = (390, 30)
     screen.blit(next_text, tRect)
@@ -48,7 +60,7 @@ def draw_grid(screen, board, hold, q):
         next_piece_y += 35
 
     # hold text
-    hold_text = font.render("HOLD:", True, (0, 0, 0))
+    hold_text = font.render("HOLD:", True, BLACK)
     tRect = hold_text.get_rect()
     tRect.center = (31, 30)
     screen.blit(hold_text, tRect)
