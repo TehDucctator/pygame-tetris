@@ -5,10 +5,20 @@ pygame.display.init()
 pygame.font.init()
 
 BLACK = (0, 0, 0)
+RED = (255, 0, 0)
 GREY = (128, 128, 128)
 
+# writes text
+def write_text(text: str, size: int, x: int, y: int, color: tuple, screen):
+    font = pygame.font.Font('freesansbold.ttf', size)
+    rendered = font.render(text, True, color)
+    tRect = rendered.get_rect()
+    tRect.center = (x, y)
+    screen.blit(rendered, tRect)
+
+
+# draws playfield, hold, queue, and placed tetrominoes
 def draw_grid(screen, board, hold, q, level, lines):
-    font = pygame.font.Font('freesansbold.ttf', 15)
     screen.fill(GREY)
     
     # grid
@@ -34,24 +44,15 @@ def draw_grid(screen, board, hold, q, level, lines):
         y += 30
 
     # level text
-    level_text = font.render(f"LEVEL: {level}", True, BLACK)
-    tRect = level_text.get_rect()
-    tRect.center = (150, 660)
-    screen.blit(level_text, tRect)
+    write_text(f"LEVEL: {level}", 15, 150, 660, BLACK, screen)
 
     # lines cleared text
-    line_text = font.render(F"LINES: {lines}", True, BLACK)
-    tRect = line_text.get_rect()
-    tRect.center = (270, 660)
-    screen.blit(line_text, tRect)
+    write_text(f"LINES: {lines}", 15, 270, 660, BLACK, screen)
 
     # next up text
-    next_text = font.render("NEXT:", True, BLACK)
-    tRect = next_text.get_rect()
-    tRect.center = (390, 30)
-    screen.blit(next_text, tRect)
-    
-    # show next pieces
+    write_text("NEXT:", 15, 390, 30, BLACK, screen)
+
+    # show next 5 pieces
     pygame.draw.rect(screen, BLACK, [370, 45, 40, 175])
     next_piece_y = 50
     for shape in q[1:6]:
@@ -60,10 +61,7 @@ def draw_grid(screen, board, hold, q, level, lines):
         next_piece_y += 35
 
     # hold text
-    hold_text = font.render("HOLD:", True, BLACK)
-    tRect = hold_text.get_rect()
-    tRect.center = (31, 30)
-    screen.blit(hold_text, tRect)
+    write_text("HOLD:", 15, 31, 30, BLACK, screen)
     
     # show held piece
     pygame.draw.rect(screen, BLACK, [10, 45, 40, 30])
@@ -74,6 +72,7 @@ def draw_grid(screen, board, hold, q, level, lines):
     pygame.display.flip()
 
 
+# draws tetromino and outline
 def draw(screen, board, tetromino: str, x=120, y=30, rotation=0):
     tetromino_arr = "tetrominoes." + tetromino
 
@@ -118,3 +117,19 @@ def draw(screen, board, tetromino: str, x=120, y=30, rotation=0):
         pygame.draw.rect(screen, color, [outline_x+1, outline_y+1, 29, 29], 1)
     
     pygame.display.flip()
+
+
+# writes lost text
+def write_lose_text(screen):
+    text = "You Lose! Press space to play again"
+    x = 210
+    y = 345
+
+    # outline
+    write_text(text, 17, x-1, y+1, BLACK, screen)
+    write_text(text, 17, x+1, y+1, BLACK, screen)
+    write_text(text, 17, x-1, y-1, BLACK, screen)
+    write_text(text, 17, x+1, y-1, BLACK, screen)
+    
+    # lost text
+    write_text(text, 17, x, y, RED, screen)

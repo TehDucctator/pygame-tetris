@@ -1,9 +1,7 @@
 import pygame
 import tetrominoes
-from render import draw_grid, draw
+from render import draw_grid, draw, write_lose_text
 from leveling import level_up, speed
-
-board = [[""]*10 for _ in range(24)]
 
 # pygame set up
 pygame.init()
@@ -14,7 +12,7 @@ BLACK = (0, 0, 0)
 GREY = (128, 128, 128)
 
 screen = pygame.display.set_mode((SCRN_W, SCRN_H))
-pygame.display.set_caption('Pygame Tetris')
+pygame.display.set_caption('Pytris')
 icon = pygame.image.load("icon.png")
 pygame.display.set_icon(icon)
 
@@ -24,9 +22,15 @@ screen.fill(WHITE)
 
 pygame.display.flip()
 
-q = []
+# blank board and queue
+class Game:
+    def __init__(self):
+        self.board = [[""]*10 for _ in range(24)]
+        self.q = []
 
-class current_piece:
+
+# handles and stores data about current piece
+class CurrentPiece:
     def __init__(self, shape: str, x=150, y=30, rotation=0):
         self.shape = shape
         self.x = x
@@ -59,7 +63,7 @@ class current_piece:
             temp_y += 30
 
     # returns if piece can move in a certain direction
-    def move_check(self, x_change: int, y_change: int):
+    def move_check(self, x_change: int, y_change: int, board):
         self.get_coords()
         
         can_move = True
@@ -83,7 +87,7 @@ class current_piece:
         return can_move
 
     # updates board to place piece
-    def place(self):
+    def place(self, board):
         for coord in self.coords:
             board[coord[1]][coord[0]] = self.shape
 
@@ -93,7 +97,7 @@ class current_piece:
         pygame.time.delay(2)
 
     # rotation system (wall kicks)
-    def SRS(self, direction):
+    def SRS(self, direction, board):
         wall_kick_tests = [[[(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)], # 0 to 1 (r)
                             [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)]], # 0 to 3 (l)
                             
@@ -118,6 +122,7 @@ class current_piece:
                             [[(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)], # 3 to 0
                              [(0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2)]]] # 3 to 2
 
+        # tests each test case
         def test(start_rotation, shape_name):
             self.get_coords() # get orientation for placement
 
@@ -153,25 +158,26 @@ class current_piece:
                     self.x += test[0]*30
                     self.y += test[1]*30
                     self.get_coords()
-                    break
+                    return True
 
             else: # if no suitable spot found, undo rotation 
                 self.rotation = start_rotation
+                return False
 
-            
+        # handles rotating piece
         if direction == 0: # rotate right
             start_rotation = self.rotation
             self.rotation += 1 if self.rotation < 3 else -3
-            test(start_rotation, self.shape)
+            return test(start_rotation, self.shape)
             
         else: # rotate left
             start_rotation = self.rotation
             self.rotation -= 1 if self.rotation >= 1 else -3
-            test(start_rotation, self.shape)
+            return test(start_rotation, self.shape)
 
 
-# clears full lines in board
-def clear_lines():
+# clears full lines in board, returns number of lines cleared
+def clear_lines(board):
     line_count = 0
 
     for i, line in enumerate(board):
@@ -189,14 +195,14 @@ def clear_lines():
 
 
 # returns if piece can't be spawned after moving up twice
-def check_lose(current):
-    if not current.move_check(0,0): # moves up one if can't place
+def check_lose(current, board):
+    if not current.move_check(0, 0, board): # moves up one if can't place
         current.y -= 30
     
-        if not current.move_check(0,0): # moves up again if can't place
+        if not current.move_check(0, 0, board): # moves up again if can't place
             current.y -= 30
       
-            if not current.move_check(0,0): # lose if can't spawn after moving up twice
+            if not current.move_check(0, 0, board): # lose if can't spawn after moving up twice
                 return True
     
     return False
@@ -204,9 +210,10 @@ def check_lose(current):
 
 # main game function
 def main():
-    q.extend(tetrominoes.generate_bag())
-    current = current_piece(q[0])
-    draw(screen, board, current.shape, current.x, current.y, current.rotation)
+    game = Game() # creates new game with blank board + queue
+    game.q.extend(tetrominoes.generate_bag()) # adds first bag to queue
+    current = CurrentPiece(game.q[0]) # sets first piece
+    draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
     pygame.key.set_repeat(200, 30)
 
@@ -218,10 +225,11 @@ def main():
     lines_cleared = 0
 
     frame = 0
+    lost = False
     running = True
     while running: # main game loop
-        if len(q) <= 7:
-          q.extend(tetrominoes.generate_bag())
+        if len(game.q) <= 7:
+          game.q.extend(tetrominoes.generate_bag())
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -230,30 +238,32 @@ def main():
             if event.type == pygame.KEYDOWN:
                 # move right
                 if event.key == pygame.K_RIGHT:
-                    if current.move_check(1, 0):
-                        draw_grid(screen, board, hold, q, level, lines_cleared)
+                    if current.move_check(1, 0, game.board):
+                        draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
                         current.x += 30
-                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                        draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
                 # soft drop
                 if event.key == pygame.K_DOWN:
-                    if current.move_check(0, 1):
-                        draw_grid(screen, board, hold, q, level, lines_cleared)
+                    if current.move_check(0, 1, game.board):
+                        draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
                         current.y += 30
-                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                        draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
                 # move left
                 if event.key == pygame.K_LEFT:
-                    if current.move_check(-1, 0):
-                        draw_grid(screen, board, hold, q, level, lines_cleared)
+                    if current.move_check(-1, 0, game.board):
+                        draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
                         current.x -= 30
-                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                        draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
                 # rotate right
                 if event.key == pygame.K_UP:
-                    current.SRS(0)
-                    draw_grid(screen, board, hold, q, level, lines_cleared)
-                    draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                    if current.SRS(0, game.board): # successful rotation
+                        ground_time = 0
+
+                    draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
+                    draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
                 # hard drop
                 if not space_held: # prevent holding space 
@@ -261,40 +271,43 @@ def main():
                         used_hold = False
                         space_held = True
 
-                        while current.move_check(0, 1):
+                        while current.move_check(0, 1, game.board):
                             current.y += 30
 
-                        current.place()
-                        q.pop(0)
-                        current = current_piece(q[0], 150, 30)
-                        if check_lose(current): # check if lost
+                        current.place(game.board)
+                        game.q.pop(0)
+                        current = CurrentPiece(game.q[0], 150, 30)
+                        if check_lose(current, game.board): # check if lost
                             running = False
+                            lost = True
                         
-                        lines_cleared += clear_lines()
+                        lines_cleared += clear_lines(game.board)
                         level = level_up(level, lines_cleared)
 
-                        draw_grid(screen, board, hold, q, level, lines_cleared)
-                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                        draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
+                        draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
                 # rotate left
                 if event.key == pygame.K_z:
-                    current.SRS(-1)
-                    draw_grid(screen, board, hold, q, level, lines_cleared)
-                    draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                    if current.SRS(-1, game.board): # successful rotation
+                        ground_time = 0
+
+                    draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
+                    draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
                 # hold
                 if event.key == pygame.K_c:
                     if not used_hold:
                         used_hold = True
                         if hold == "":
-                            hold = q.pop(0)
+                            hold = game.q.pop(0)
                         else:
-                            q.insert(0, hold)
-                            hold = q.pop(1)
+                            game.q.insert(0, hold)
+                            hold = game.q.pop(1)
                         
-                        draw_grid(screen, board, hold, q, level, lines_cleared)
-                        current = current_piece(q[0], 150, 30)
-                        draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                        draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
+                        current = CurrentPiece(game.q[0], 150, 30)
+                        draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
             # detect releasing space
             if event.type == pygame.KEYUP:
@@ -303,47 +316,64 @@ def main():
 
         # gravity
         if frame % speed(level) == 0:
-            if current.move_check(0, 1): 
-                draw_grid(screen, board, hold, q, level, lines_cleared)
+            if current.move_check(0, 1, game.board): 
+                draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
                 current.y += 30
-                draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
                 ground_time = 0
-                
-            elif ground_time == 49-speed(level): # place from gravity
+
+        # on ground
+        if not current.move_check(0, 1, game.board): # can't move down
+            if ground_time == 30: # place from gravity
                 used_hold = False
 
-                current.place()
-                q.pop(0)
-                current = current_piece(q[0], 150, 30)
+                current.place(game.board)
+                game.q.pop(0)
+                current = CurrentPiece(game.q[0], 150, 30)
                 ground_time = 0
-                if check_lose(current): # check if lost
+                if check_lose(current, game.board): # check if lost
                     running = False
+                    lost = True
                 
-                lines_cleared += clear_lines()
+                lines_cleared += clear_lines(game.board)
                 level = level_up(level, lines_cleared)
-                draw_grid(screen, board, hold, q, level, lines_cleared)
-                draw(screen, board, current.shape, current.x, current.y, current.rotation)
+                draw_grid(screen, game.board, hold, game.q, level, lines_cleared)
+                draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
                 
             else: # delay before placing from gravity
                 ground_time += 1
 
                 # flash
-                for coord in current.coords:
-                    pygame.draw.rect(screen, WHITE, [coord[0]*30+61, (coord[1]-4)*30+31, 29, 29])
-                
-                pygame.display.flip()
-                pygame.time.delay(15)
+                if ground_time == 15:
+                    for coord in current.coords:
+                        pygame.draw.rect(screen, WHITE, [coord[0]*30+61, (coord[1]-4)*30+31, 29, 29])
+                    
+                    pygame.display.flip()
+                    pygame.time.delay(15)
 
-                for coord in current.coords:
-                    pygame.draw.rect(screen, tetrominoes.piece_colors[current.shape], [coord[0]*30+61, (coord[1]-4)*30+31, 29, 29])
+                    for coord in current.coords:
+                        pygame.draw.rect(screen, tetrominoes.piece_colors[current.shape], [coord[0]*30+61, (coord[1]-4)*30+31, 29, 29])
 
-                pygame.display.flip()
-                pygame.time.delay(15)
-
+                    pygame.display.flip()
+                    pygame.time.delay(15)
 
         # update frame var
         frame += 1 
         clock.tick(60)
+
+    # lost
+    write_lose_text(screen)
+    pygame.display.flip()
+    while lost:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                lost = False 
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    lost = False
+                    main()
+
 
 if __name__ == "__main__":
   main()
