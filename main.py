@@ -215,7 +215,7 @@ def main():
     current = CurrentPiece(game.q[0]) # sets first piece
     draw(screen, game.board, current.shape, current.x, current.y, current.rotation)
 
-    pygame.key.set_repeat(200, 30)
+    pygame.key.set_repeat(200, 30) # allows holding keys
 
     hold = ""
     used_hold = False # tracks if used hold
@@ -364,15 +364,15 @@ def main():
     # lost
     write_lose_text(screen)
     pygame.display.flip()
-    while lost:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+    while lost: # runs when lost
+        for event in pygame.event.get(): # gets events
+            if event.type == pygame.QUIT: # pressed X button
                 lost = False 
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    lost = False
-                    main()
+            if event.type == pygame.KEYDOWN: # key down event
+                if event.key == pygame.K_SPACE: # pressed space
+                    lost = False # resets lost var
+                    main() # recalls main function to restart
 
 
 if __name__ == "__main__":
